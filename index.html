@@ -54,7 +54,7 @@ const seedPosts=[
 {id:'s2',user:'Dev Arjun',handle:'@devbuilds',initial:'D',text:'Small progress is still progress. Spent the evening learning something new and it feels GOOD. What are you learning this week? 🚀',time:'4h',likes:18,liked:false,comments:[],image:''},
 {id:'s3',user:'Nia Patel',handle:'@niainmotion',initial:'N',text:'Your life is not a competition. Make it a collection of moments you love. ✨',time:'1d',likes:41,liked:false,comments:[],image:''}
 ];
-const defaultState=()=>({user:null,users:[{name:'Maya Chen',handle:'@mayacreates',initial:'M',bio:'Making things, finding wonder.',interests:['Art','Photography','Design']},{name:'Dev Arjun',handle:'@devbuilds',initial:'D',bio:'Building one tiny thing every day.',interests:['Technology','Coding','Startups']},{name:'Nia Patel',handle:'@niainmotion',initial:'N',bio:'Movement, music and mindful living.',interests:['Fitness','Music','Travel']}],posts:seedPosts,following:[],circles:['Creative Corner','Study Buddies','Fitness Together']});
+const defaultState=()=>({user:null,accounts:[],users:[{name:'Maya Chen',handle:'@mayacreates',initial:'M',bio:'Making things, finding wonder.',interests:['Art','Photography','Design']},{name:'Dev Arjun',handle:'@devbuilds',initial:'D',bio:'Building one tiny thing every day.',interests:['Technology','Coding','Startups']},{name:'Nia Patel',handle:'@niainmotion',initial:'N',bio:'Movement, music and mindful living.',interests:['Fitness','Music','Travel']}],posts:seedPosts,following:[],circles:['Creative Corner','Study Buddies','Fitness Together']});
 let state=load(),loginMode=false;
 function load(){try{return JSON.parse(localStorage.getItem(KEY))||defaultState()}catch{return defaultState()}}
 function save(){localStorage.setItem(KEY,JSON.stringify(state))}
@@ -65,7 +65,45 @@ function showAuth(){document.getElementById('auth').classList.remove('hidden');d
 function showApp(){document.getElementById('auth').classList.add('hidden');document.getElementById('app').classList.remove('hidden');render()}
 function toggleAuth(){loginMode=!loginMode;document.getElementById('authTitle').textContent=loginMode?'Welcome back.':'Find your people.';document.getElementById('authSub').textContent=loginMode?'Your VYBORA space is waiting.':'A space for every side of you.';document.getElementById('authName').classList.toggle('hidden',loginMode);document.getElementById('authName').required=!loginMode;document.getElementById('authSubmit').textContent=loginMode?'Log in':'Create account';document.getElementById('switchText').textContent=loginMode?'New to VYBORA?':'Already part of VYBORA?';document.getElementById('switchAuth').textContent=loginMode?'Sign up':'Log in'}
 document.getElementById('switchAuth').onclick=toggleAuth;
-document.getElementById('authForm').onsubmit=e=>{e.preventDefault();let email=document.getElementById('authEmail').value.trim().toLowerCase(),pass=document.getElementById('authPassword').value;if(loginMode){let found=(state.accounts||[]).find(a=>a.email===email&&a.password===pass);if(!found)return toast('Account not found. Check details or sign up.');state.user=found.user}else{if((state.accounts||[]).some(a=>a.email===email))return toast('Email already registered on this device.');let name=document.getElementById('authName').value.trim();if(!name)return toast('Enter your name');let user={name,handle:'@'+name.toLowerCase().replace(/[^a-z0-9]/g,'')+Math.floor(Math.random()*90+10),initial:initials(name),bio:'Finding my vibe on VYBORA.',interests:['Creativity','Community']};state.accounts=state.accounts||[];state.accounts.push({email,password:pass,user});state.user=user;state.users.unshift(user)}save();showApp()};
+document.getElementById('authForm').onsubmit = e => {
+  e.preventDefault();
+
+  let email = document.getElementById('authEmail').value.trim().toLowerCase();
+  let pass = document.getElementById('authPassword').value;
+
+  state.accounts = state.accounts || [];
+  state.users = state.users || [];
+
+  if (!email || !pass) return toast('Enter email and password');
+
+  if (loginMode) {
+    let found = state.accounts.find(a => a.email === email && a.password === pass);
+    if (!found) return toast('Account not found. Please sign up.');
+    state.user = found.user;
+  } else {
+    let name = document.getElementById('authName').value.trim();
+    if (!name) return toast('Enter your name');
+
+    if (state.accounts.some(a => a.email === email)) {
+      return toast('Email already registered. Please log in.');
+    }
+
+    let user = {
+      name,
+      handle: '@' + name.toLowerCase().replace(/[^a-z0-9]/g, '') + Math.floor(Math.random() * 90 + 10),
+      initial: initials(name),
+      bio: 'Finding my vibe on VYBORA.',
+      interests: ['Creativity', 'Community']
+    };
+
+    state.accounts.push({email, password: pass, user});
+    state.user = user;
+    state.users.unshift(user);
+  }
+
+  save();
+  showApp();
+};
 function render(){if(!state.user)return;let u=state.user;document.getElementById('topAvatar').textContent=u.initial||initials(u.name);document.getElementById('composerAvatar').textContent=u.initial||initials(u.name);renderStories();renderFeed();renderExplore();renderCircles();renderProfile();renderSuggestions()}
 function renderStories(){let people=[state.user,...state.users.filter(x=>x.handle!==state.user.handle)];document.getElementById('stories').innerHTML=people.map((p,i)=>`<div class="story ${i===0?'add':''}" onclick="${i===0?'toast(\\'Story creation is coming soon.\\')':'toast(\\'Viewing '+esc(p.name)+'’s moments\\')'}"><div class="story-ring"><div>${esc(p.initial||initials(p.name))}</div></div>${i===0?'Your story':esc(p.name.split(' ')[0])}</div>`).join('')}
 function postHTML(p){return `<article class="card"><div class="post-head"><div class="avatar">${esc(p.initial||initials(p.user))}</div><div><div class="post-user">${esc(p.user)}</div><div class="sub">${esc(p.handle||'@member')} · ${esc(p.time||'now')}</div></div><button class="dots" onclick="toast('More post controls coming soon')">···</button></div>${p.text?`<div class="post-text">${esc(p.text)}</div>`:''}${p.image?`<img class="post-media" src="${esc(p.image)}" alt="Post image" onerror="this.style.display='none'">`:''}<div class="post-actions"><button class="action ${p.liked?'liked':''}" onclick="likePost('${p.id}')">${p.liked?'♥':'♡'} ${p.likes||0} Likes</button><button class="action" onclick="document.getElementById('comment-${p.id}').focus()">☏ ${p.comments?.length||0} Comments</button><button class="action" onclick="sharePost('${p.id}')">↗ Share</button></div><div class="comment-list">${(p.comments||[]).slice(-3).map(c=>`<div class="comment"><strong>${esc(c.user)}</strong>${esc(c.text)}</div>`).join('')}</div><form class="comment-form" onsubmit="addComment(event,'${p.id}')"><input id="comment-${p.id}" placeholder="Add a thoughtful comment..." required><button class="smallbtn">Send</button></form></article>`}
